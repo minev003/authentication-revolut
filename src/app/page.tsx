@@ -14,8 +14,6 @@ export default function LoginPage() {
 
     const formDataWithSignUp = { ...formData, isSignUp };
 
-
-
     const url = '/api/auth';
 
     const res = await fetch(url, {
@@ -26,7 +24,7 @@ export default function LoginPage() {
       body: JSON.stringify(formDataWithSignUp),
 
     });
-    console.log(formData);
+    // console.log(formData);
 
     const data = await res.json();
 
@@ -69,7 +67,7 @@ export default function LoginPage() {
 
   return (
     <div className="bg-dark text-light min-vh-100 d-flex flex-column align-items-center justify-content-center p-4">
-      <h1 className="text-center mt-4 mb-5">{message || 'Моля, влезте или се регистрирайте'}</h1>
+      <h1 className="text-center mt-4 mb-5">{message || 'Verify me!'}</h1>
 
       {/* Ако потребителят е успешно влязъл или се е регистрирал, показваме формата за верификация */}
       {isAuthenticated ? (

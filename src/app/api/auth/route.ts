@@ -1,4 +1,3 @@
-// src/app/api/auth/route.ts
 
 import bcrypt from 'bcryptjs';
 // import { PrismaClient } from '@prisma/client';
@@ -6,9 +5,9 @@ import prisma from '../../../../lib/prisma';
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { email, firstName, lastName, password, isSignUp } = body;
+  const { email, firstName, lastName, birthDate, address, password, isSignUp } = body;
 
-  console.log("инфо от АПИ:", isSignUp);
+  console.log("инфо от АПИ:", body);
 
   // Проверка дали имейл и парола са подадени
   if (!email || !password) {
@@ -31,17 +30,16 @@ export async function POST(request: Request) {
     // Създаване на нов потребител в базата данни
     const user = await prisma.user.create({
       data: {
-
         email,
         firstName,
         lastName,
+        birthDate: new Date(birthDate),
+        address,
         password: hashedPassword,
-        isSignUp,
-        // name: email.split('@')[0], // Примерно взимаме името от частта преди '@' в имейла
       },
     });
 
-    return new Response(JSON.stringify({ message: 'Регистрацията е успешна!' }), { status: 200 });
+    return new Response(JSON.stringify({}), { status: 200 });
   } else {
     // Логика за вход
     const user = await prisma.user.findUnique({
@@ -54,7 +52,7 @@ export async function POST(request: Request) {
 
     // Проверка на паролата
     const passwordMatch = await bcrypt.compare(password, user.password);
-
+    console.log("Login заявка:", { email, password });
     if (!passwordMatch) {
       return new Response(JSON.stringify({ error: 'Невалиден имейл или парола.' }), { status: 400 });
     }

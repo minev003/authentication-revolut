@@ -9,11 +9,13 @@ export default function AuthForm({ onSubmit }) {
   const [firstName, setFirstName] = useState(''); // ново поле за име
   const [lastName, setLastName] = useState('');   // ново поле за фамилия
   const [isSignUp, setIsSignUp] = useState(false);
+  const [birthDate, setBirthDate] = useState(''); // ново поле за дата на раждане
+  const [address, setAddress] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const formData = { email, password, firstName, lastName };
+    const formData = { email, firstName, lastName, birthDate, address, password, };
 
     if (isSignUp && password !== confirmPassword) {
       alert('Паролите не съвпадат');
@@ -21,7 +23,7 @@ export default function AuthForm({ onSubmit }) {
     }
 
     onSubmit(formData, isSignUp);
-    console.log(formData);
+    // console.log(formData);
   };
 
   return (
@@ -41,6 +43,8 @@ export default function AuthForm({ onSubmit }) {
               required
             />
           </div>
+
+
 
           {isSignUp && (
             <>
@@ -64,6 +68,31 @@ export default function AuthForm({ onSubmit }) {
                   className="form-control"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </div>
+
+
+              <div className="mb-3">
+                <label htmlFor="birthDate" className="form-label">Дата на раждане</label>
+                <input
+                  type="date"
+                  id="birthDate"
+                  className="form-control"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="mb-3">
+                <label htmlFor="address" className="form-label">Адрес</label>
+                <input
+                  type="text"
+                  id="address"
+                  className="form-control"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
                   required
                 />
               </div>

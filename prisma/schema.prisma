@@ -14,13 +14,15 @@ generator client {
 }
 
 model User {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   firstName      String
   lastName       String
-  email          String   @unique
+  birthDate      DateTime
+  address        String
+  email          String    @unique
   password       String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   profilePicture String?
   idCardPicture  String?
   selfiePicture  String?
