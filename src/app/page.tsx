@@ -1,119 +1,207 @@
 'use client';
-
-import { useState } from 'react';
-import AuthForm from '../../components/AuthForm'; // пътя зависи от структурата на проекта
-import { PrismaClient } from '@prisma/client';
+import { useRef, useState } from 'react';
+import AuthForm from '../../components/AuthForm';
 
 export default function LoginPage() {
   const [message, setMessage] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // Статус за успешен вход/регистрация
-  const [image, setImage] = useState(null); // За съхранение на изображението на личната карта
-  const [selfie, setSelfie] = useState(null); // За съхранение на селфи снимката
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [image, setImage] = useState(null);
+  const [selfie, setSelfie] = useState(null);
+
+  const [showSelfieCamera, setShowSelfieCamera] = useState(false);
+  const [showIdCardCamera, setShowIdCardCamera] = useState(false);
+
+  const selfieVideoRef = useRef(null);
+  const selfieCanvasRef = useRef(null);
+  const idCardVideoRef = useRef(null);
+  const idCardCanvasRef = useRef(null);
+
+  const base64ToBlob = (base64Data) => {
+    // console.log('Base64 Data:', base64Data);
+    const [base64, mime] = base64Data.split(';');
+    const byteCharacters = atob(base64.split(',')[1]);
+
+    const byteArrays = [];
+    for (let offset = 0; offset < byteCharacters.length; offset++) {
+      byteArrays.push(byteCharacters.charCodeAt(offset));
+    }
+
+    const byteArray = new Uint8Array(byteArrays);
+    const blob = new Blob([byteArray], { type: mime }); // Използваме mime тип
+    return blob;
+  };
 
   const handleFormSubmit = async (formData, isSignUp) => {
-
     const formDataWithSignUp = { ...formData, isSignUp };
-
     const url = '/api/auth';
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formDataWithSignUp),
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formDataWithSignUp),
+      });
 
-    });
-    // console.log(formData);
+      const textResponse = await res.text();
+      console.log('Response Text:', textResponse);
 
-    const data = await res.json();
-
-    if (res.ok) {
-      setMessage(isSignUp ? 'Регистрацията е успешна!' : 'Влезли сте успешно!');
-      setIsAuthenticated(true); // Ако е успешен вход/регистрация
-    } else {
-      setMessage(data.error || 'Грешка при изпълнение');
+      if (res.ok) {
+        // setMessage(isSignUp ? 'Регистрацията е успешна!' : 'Влезли сте успешно!');
+        setIsAuthenticated(true);
+      } else {
+        const data = JSON.parse(textResponse);
+        setMessage(data.error || 'Грешка при изпълнение');
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage('Грешка при изпълнение на заявката');
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImage(URL.createObjectURL(file)); // Преобразуваме файл в URL, за да го покажем в браузъра
+  const startCamera = async (type) => {
+    const isSelfie = type === 'selfie';
+    const videoRef = isSelfie ? selfieVideoRef : idCardVideoRef;
+    const setShowCamera = isSelfie ? setShowSelfieCamera : setShowIdCardCamera;
+
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      alert('Не може да се достъпи камерата');
     }
   };
 
-  const handleSelfieChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelfie(URL.createObjectURL(file)); // Преобразуваме файл в URL за селфи
+  const takePhoto = (type) => {
+    const isSelfie = type === 'selfie';
+    const video = isSelfie ? selfieVideoRef.current : idCardVideoRef.current;
+    const canvas = isSelfie ? selfieCanvasRef.current : idCardCanvasRef.current;
+    const context = canvas.getContext('2d');
+
+    if (video && canvas && context) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg');
+      console.log(dataUrl);
+
+      if (isSelfie) {
+        setSelfie(dataUrl);
+        setShowSelfieCamera(false);
+      } else {
+        setImage(dataUrl);
+        setShowIdCardCamera(false);
+      }
+
+      video.srcObject.getTracks().forEach((track) => track.stop());
     }
   };
 
-  const handleSubmitVerification = (e) => {
+  const handleSubmitVerification = async (e) => {
     e.preventDefault();
-    if (!image) {
-      alert('Моля, качете снимка на личната карта!');
-      return;
-    }
-    if (!selfie) {
-      alert('Моля, качете селфи!');
+
+    if (!image || !selfie) {
+      alert('Моля, заснемете както личната карта, така и селфи!');
       return;
     }
 
-    // Тук ще добавим логика за изпращане на изображенията към сървъра или за сравнение
-    alert('Снимката на личната карта и селфито са качени успешно!');
+    const formData = new FormData();
+    formData.append('idCard', base64ToBlob(image), 'idCard.jpg');
+    formData.append('selfie', base64ToBlob(selfie), 'selfie.jpg');
+
+    try {
+      const res = await fetch('/api/auth/verify', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const textResponse = await res.text();
+      console.log('Verification Response:', textResponse);
+
+      if (res.ok) {
+        alert('Верификацията е успешна!');
+      } else {
+        const data = JSON.parse(textResponse);
+        alert(`Грешка при верификация: ${data.error}`);
+      }
+    } catch (error) {
+      alert('Грешка при изпращане на верификация');
+    }
   };
+
+
 
   return (
     <div className="bg-dark text-light min-vh-100 d-flex flex-column align-items-center justify-content-center p-4">
-      <h1 className="text-center mt-4 mb-5">{message || 'Verify me!'}</h1>
+      <h1 className="text-center mt-4 mb-5">{message || 'Authentication'}</h1>
 
-      {/* Ако потребителят е успешно влязъл или се е регистрирал, показваме формата за верификация */}
       {isAuthenticated ? (
         <div className="container d-flex justify-content-center mt-5">
           <div className="card shadow-lg p-4 bg-opacity-90" style={{ width: '100%', maxWidth: '450px', borderRadius: '15px' }}>
-            <h2 className="text-center mb-4 text-primary">Верификация на лична карта</h2>
 
             <form onSubmit={handleSubmitVerification}>
-              <div className="mb-3">
-                <label htmlFor="idCardImage" className="form-label">Качете снимка на личната карта или паспорт</label>
-                <input
-                  type="file"
-                  id="idCardImage"
-                  className="form-control-file border-0 shadow-sm"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  required
-                />
+              <div className="mb-4">
+                <label className="form-label">Заснемете личната си карта или паспорт</label>
+
+                {!image && !showIdCardCamera && (
+                  <div className="d-grid gap-2 mb-2">
+                    <button type="button" className="btn btn-outline-secondary" onClick={() => startCamera('idCard')}>
+                      Стартирай камерата за лична карта
+                    </button>
+                  </div>
+                )}
+
+                {showIdCardCamera && (
+                  <div className="text-center mb-3">
+                    <video ref={idCardVideoRef} autoPlay className="w-100 rounded-3 shadow-sm mb-2" />
+                    <div className="d-grid gap-2">
+                      <button type="button" className="btn btn-success" onClick={() => takePhoto('idCard')}>
+                        Заснеми личната карта
+                      </button>
+                    </div>
+                    <canvas ref={idCardCanvasRef} style={{ display: 'none' }} />
+                  </div>
+                )}
+
+                {image && (
+                  <div className="mb-3">
+                    <img src={image} alt="ID Card Preview" className="img-fluid rounded-3 shadow-sm" />
+                  </div>
+                )}
               </div>
 
-              {/* Показваме преглед на снимката на личната карта, ако е качена */}
-              {image && (
-                <div className="mb-3">
-                  <img src={image} alt="ID Card Preview" className="img-fluid rounded-3 shadow-sm" />
-                </div>
-              )}
 
-              {/* Секция за качване на селфи */}
-              <div className="mb-3">
-                <label htmlFor="selfie" className="form-label">Качете селфи за сравнение</label>
-                <input
-                  type="file"
-                  id="selfie"
-                  className="form-control-file border-0 shadow-sm"
-                  accept="image/*"
-                  onChange={handleSelfieChange}
-                  required
-                />
+              <div className="mb-4">
+                <label className="form-label">Заснемете селфи за сравнение</label>
+
+                {!selfie && !showSelfieCamera && (
+                  <div className="d-grid gap-2 mb-2">
+                    <button type="button" className="btn btn-outline-secondary" onClick={() => startCamera('selfie')}>
+                      Стартирай камерата за селфи
+                    </button>
+                  </div>
+                )}
+
+                {showSelfieCamera && (
+                  <div className="text-center mb-3">
+                    <video ref={selfieVideoRef} autoPlay className="w-100 rounded-3 shadow-sm mb-2" />
+                    <div className="d-grid gap-2">
+                      <button type="button" className="btn btn-success" onClick={() => takePhoto('selfie')}>
+                        Заснеми селфи
+                      </button>
+                    </div>
+                    <canvas ref={selfieCanvasRef} style={{ display: 'none' }} />
+                  </div>
+                )}
+
+                {selfie && (
+                  <div className="mb-3">
+                    <img src={selfie} alt="Selfie Preview" className="img-fluid rounded-3 shadow-sm" />
+                  </div>
+                )}
               </div>
-
-              {/* Показваме преглед на селфито, ако е качено */}
-              {selfie && (
-                <div className="mb-3">
-                  <img src={selfie} alt="Selfie Preview" className="img-fluid rounded-3 shadow-sm" />
-                </div>
-              )}
 
               <div className="d-grid gap-2">
                 <button type="submit" className="btn btn-primary btn-lg">Потвърдете верификацията</button>
@@ -127,4 +215,3 @@ export default function LoginPage() {
     </div>
   );
 }
-``

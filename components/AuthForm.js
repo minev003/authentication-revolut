@@ -6,10 +6,10 @@ export default function AuthForm({ onSubmit }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [firstName, setFirstName] = useState(''); // ново поле за име
-  const [lastName, setLastName] = useState('');   // ново поле за фамилия
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [birthDate, setBirthDate] = useState(''); // ново поле за дата на раждане
+  const [birthDate, setBirthDate] = useState('');
   const [address, setAddress] = useState('');
 
   const handleSubmit = (e) => {
@@ -23,7 +23,6 @@ export default function AuthForm({ onSubmit }) {
     }
 
     onSubmit(formData, isSignUp);
-    // console.log(formData);
   };
 
   return (
@@ -43,8 +42,6 @@ export default function AuthForm({ onSubmit }) {
               required
             />
           </div>
-
-
 
           {isSignUp && (
             <>
