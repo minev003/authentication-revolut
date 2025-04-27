@@ -18,7 +18,8 @@
     "multer": "^1.4.5-lts.2",
     "next": "^15.3.1",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-world-flags": "^1.6.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
