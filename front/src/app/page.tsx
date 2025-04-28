@@ -5,6 +5,7 @@ import AuthForm from '../../components/AuthForm';
 export default function LoginPage() {
   const [message, setMessage] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState('');
   const [image, setImage] = useState(null);
   const [selfie, setSelfie] = useState(null);
 
@@ -17,18 +18,14 @@ export default function LoginPage() {
   const idCardCanvasRef = useRef(null);
 
   const base64ToBlob = (base64Data) => {
-    // console.log('Base64 Data:', base64Data);
     const [base64, mime] = base64Data.split(';');
     const byteCharacters = atob(base64.split(',')[1]);
-
     const byteArrays = [];
     for (let offset = 0; offset < byteCharacters.length; offset++) {
       byteArrays.push(byteCharacters.charCodeAt(offset));
     }
-
     const byteArray = new Uint8Array(byteArrays);
-    const blob = new Blob([byteArray], { type: mime }); // Използваме mime тип
-    return blob;
+    return new Blob([byteArray], { type: mime });
   };
 
   const handleFormSubmit = async (formData, isSignUp) => {
@@ -46,7 +43,6 @@ export default function LoginPage() {
       console.log('Response Text:', textResponse);
 
       if (res.ok) {
-        // setMessage(isSignUp ? 'Регистрацията е успешна!' : 'Влезли сте успешно!');
         setIsAuthenticated(true);
       } else {
         const data = JSON.parse(textResponse);
@@ -110,6 +106,7 @@ export default function LoginPage() {
     const formData = new FormData();
     formData.append('idCard', base64ToBlob(image), 'idCard.jpg');
     formData.append('selfie', base64ToBlob(selfie), 'selfie.jpg');
+    formData.append('country', selectedCountry);
 
     try {
       const res = await fetch('/api/auth/verify', {
@@ -131,16 +128,31 @@ export default function LoginPage() {
     }
   };
 
-
-
   return (
     <div className="bg-dark text-light min-vh-100 d-flex flex-column align-items-center justify-content-center p-4">
       <h1 className="text-center mt-4 mb-5">{message || 'Authentication'}</h1>
 
-      {isAuthenticated ? (
+      {!isAuthenticated ? (
+        <AuthForm onSubmit={handleFormSubmit} />
+      ) : !selectedCountry ? (
+        <div className="card shadow-lg p-4 bg-opacity-90" style={{ width: '100%', maxWidth: '450px', borderRadius: '15px' }}>
+          <h3 className="mb-3 text-center">Изберете държава</h3>
+          <select
+            className="form-select mb-4"
+            value={selectedCountry}
+            onChange={(e) => setSelectedCountry(e.target.value)}
+          >
+            <option value="">-- Изберете държава --</option>
+            <option value="Bulgaria">България</option>
+            <option value="Romania">Румъния</option>
+            <option value="Germany">Германия</option>
+            <option value="France">Франция</option>
+            <option value="Italy">Италия</option>
+          </select>
+        </div>
+      ) : (
         <div className="container d-flex justify-content-center mt-5">
           <div className="card shadow-lg p-4 bg-opacity-90" style={{ width: '100%', maxWidth: '450px', borderRadius: '15px' }}>
-
             <form onSubmit={handleSubmitVerification}>
               <div className="mb-4">
                 <label className="form-label">Заснемете личната си карта или паспорт</label>
@@ -171,7 +183,6 @@ export default function LoginPage() {
                   </div>
                 )}
               </div>
-
 
               <div className="mb-4">
                 <label className="form-label">Заснемете селфи за сравнение</label>
@@ -204,13 +215,13 @@ export default function LoginPage() {
               </div>
 
               <div className="d-grid gap-2">
-                <button type="submit" className="btn btn-primary btn-lg">Потвърдете верификацията</button>
+                <button type="submit" className="btn btn-primary btn-lg">
+                  Потвърдете верификацията
+                </button>
               </div>
             </form>
           </div>
         </div>
-      ) : (
-        <AuthForm onSubmit={handleFormSubmit} />
       )}
     </div>
   );
