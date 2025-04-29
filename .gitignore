@@ -17,6 +17,7 @@ out/
 
 # Production
 build/
+dist/
 
 # Logs
 npm-debug.log*
@@ -24,10 +25,12 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Env files
+# Environment files
 .env
 .env.local
-.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Vercel
 .vercel/
@@ -49,10 +52,27 @@ env.bak/
 venv.bak/
 back/__pycache__/
 back/deepface_env/
+back/myenv/
 
-# Editor folders
+# Editor directories
 .vscode/
+.idea/
+*.swp
+*.swo
 
-# OS generated
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+*.pyd
+*.pxd
+
+../env
+../deepface_env
+../myenv
+../venv
