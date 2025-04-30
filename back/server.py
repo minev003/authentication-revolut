@@ -9,7 +9,6 @@ import numpy as np
 from deepface import DeepFace
 
 app = FastAPI()
-# CORS настройка
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,28 +17,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Параметри на моделите
 DETECTOR_BACKEND = "retinaface"
 MODEL_NAME = "ArcFace"
-# Затопляме модела при стартиране
+
+# Зареждаме модела еднократно
 _ = DeepFace.build_model(MODEL_NAME)
 logger.info(f"{MODEL_NAME} model loaded")
 
-# Функция за откриване на точно едно лице
-def detect_single_face(path: str) -> bool:
+def detect_face(path: str) -> bool:
+    """
+    Връща True ако DeepFace открие поне едно лице в изображението.
+    """
     try:
         faces = DeepFace.extract_faces(
             img_path=path,
             detector_backend=DETECTOR_BACKEND,
             enforce_detection=True
         )
-        return len(faces) == 1
+        return len(faces) >= 1
     except Exception as e:
         logger.error(f"Face detection error: {e}", exc_info=True)
         return False
 
-# Функция за ресайз на изображението
 def resize_image(path: str, max_dim: int = 1024):
+    """
+    Намалява изображението до max_dim пиксела по-голямата страна,
+    JPEG качество 80%.
+    """
     img = cv2.imread(path)
     if img is None:
         return
@@ -59,63 +63,66 @@ async def verify(
     idCardBack:  UploadFile = File(...),
     selfie:      UploadFile = File(...)
 ):
-    logger.info(
-        f"Verify request: front={idCardFront.filename}, back={idCardBack.filename}, selfie={selfie.filename}"
-    )
+    logger.info(f"Received verify request: front={idCardFront.filename}, back={idCardBack.filename}, selfie={selfie.filename}")
     try:
-        with TemporaryDirectory() as temp_dir:
-            front_path = os.path.join(temp_dir, idCardFront.filename)
-            back_path  = os.path.join(temp_dir, idCardBack.filename)
-            selfie_path = os.path.join(temp_dir, selfie.filename)
+        with TemporaryDirectory() as tmp:
+            # Пътища за трите качени файла
+            front_path = os.path.join(tmp, idCardFront.filename)
+            back_path  = os.path.join(tmp, idCardBack.filename)
+            selfie_path= os.path.join(tmp, selfie.filename)
 
-            # Записваме файловете
-            with open(front_path, 'wb') as f_front:
-                shutil.copyfileobj(idCardFront.file, f_front)
-            with open(back_path, 'wb') as f_back:
-                shutil.copyfileobj(idCardBack.file, f_back)
-            with open(selfie_path, 'wb') as f_selfie:
-                shutil.copyfileobj(selfie.file, f_selfie)
+            # Записваме файловете на диск
+            for upload_file, path in [
+                (idCardFront, front_path),
+                (idCardBack,  back_path),
+                (selfie,      selfie_path)
+            ]:
+                with open(path, "wb") as f:
+                    shutil.copyfileobj(upload_file.file, f)
 
-            # Ресайз
+            # Ресайзваме предна страна и селфито
             resize_image(front_path)
             resize_image(selfie_path)
 
-            # Детекция на лице
-            if not detect_single_face(front_path):
-                return {"verified": False, "error": "Не е открито едно лице в документа"}
-            if not detect_single_face(selfie_path):
-                return {"verified": False, "error": "Не е открито едно лице в селфито"}
+            # 1) Проверка: има ли лице в предната снимка на документа?
+            if not detect_face(front_path):
+                return {"verified": False, "error": "Не е открито лице в документа"}
 
-            # Изчисляваме ембединг
-            rep_front = DeepFace.represent(
+            # 2) Проверка: има ли лице в селфито?
+            if not detect_face(selfie_path):
+                return {"verified": False, "error": "Не е открито лице в селфито"}
+
+            # 3) Ембединг на лицата
+            emb_front = DeepFace.represent(
                 img_path=front_path,
                 model_name=MODEL_NAME,
                 detector_backend=DETECTOR_BACKEND,
                 enforce_detection=True
-            )[0]['embedding']
-            rep_selfie = DeepFace.represent(
+            )[0]["embedding"]
+            emb_selfie = DeepFace.represent(
                 img_path=selfie_path,
                 model_name=MODEL_NAME,
                 detector_backend=DETECTOR_BACKEND,
                 enforce_detection=True
-            )[0]['embedding']
+            )[0]["embedding"]
 
-            # Ръчно Cosine distance
-            dist = 1 - np.dot(rep_front, rep_selfie) / (np.linalg.norm(rep_front) * np.linalg.norm(rep_selfie))
+            # 4) Косинусово разстояние
+            dist = 1 - np.dot(emb_front, emb_selfie) / (np.linalg.norm(emb_front) * np.linalg.norm(emb_selfie))
             dist = float(dist)
-            threshold = 0.40  # праг за ArcFace
+            threshold = 0.40
             verified = dist <= threshold
-            logger.info(f"Distance={dist:.4f}, threshold={threshold}, verified={verified}")(f"Distance={dist:.4f}, threshold={threshold}, verified={verified}")
 
-            return {"verified": verified, "distance": dist, "threshold": threshold}
+            logger.info(f"Distance={dist:.4f}, threshold={threshold}, verified={verified}")
+
+            # 5) Връщаме резултата
+            if not verified:
+                return {"verified": False, "error": "Лицата не съвпадат"}
+            return {"verified": True, "error": None}
+
     except Exception as e:
         logger.error(f"Verification error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Грешка при верификацията: {e}")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "server:app",
-        host="0.0.0.0",
-        port=8000
-    )
+    uvicorn.run("server:app", host="0.0.0.0", port=8000)

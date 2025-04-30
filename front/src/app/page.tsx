@@ -7,9 +7,8 @@ export default function LoginPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState('');
 
-  // Тип документ
   const [documentType, setDocumentType] = useState('ID Card');
-  // Снимки като File + Preview URL
+
   const [docFrontFile, setDocFrontFile] = useState(null);
   const [docFrontPreview, setDocFrontPreview] = useState(null);
   const [docBackFile, setDocBackFile] = useState(null);
@@ -17,12 +16,10 @@ export default function LoginPage() {
   const [selfieFile, setSelfieFile] = useState(null);
   const [selfiePreview, setSelfiePreview] = useState(null);
 
-  // refs за невидимите <input>
   const frontInputRef = useRef(null);
   const backInputRef = useRef(null);
   const selfieInputRef = useRef(null);
 
-  // loading и грешка
   const [isLoading, setIsLoading] = useState(false);
   const [errorField, setErrorField] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -31,7 +28,7 @@ export default function LoginPage() {
     const file = e.target.files[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    // reset error state for this field
+
     if (errorField === type) {
       setErrorField(null);
       setErrorMessage('');
@@ -57,9 +54,9 @@ export default function LoginPage() {
       });
       const text = await res.text();
       if (res.ok) setIsAuthenticated(true);
-      else setMessage(JSON.parse(text).error || 'Грешка при изпълнение');
+      else setMessage(JSON.parse(text).error || 'Execution error');
     } catch {
-      setMessage('Грешка при изпълнение на заявката');
+      setMessage('Error executing the request');
     }
   };
 
@@ -67,53 +64,64 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorField(null);
     setErrorMessage('');
+
     if (!docFrontFile || !docBackFile || !selfieFile) {
-      alert('Моля, заснемете предна и задна страна на документа и селфи!');
+      alert('Please take a picture of the front and back of the document and a selfie!');
       return;
     }
+
     setIsLoading(true);
+
     const formData = new FormData();
     formData.append('idCardFront', docFrontFile, docFrontFile.name);
     formData.append('idCardBack', docBackFile, docBackFile.name);
     formData.append('selfie', selfieFile, selfieFile.name);
+
+    // Always read text to avoid JSON parse errors on non-JSON responses
+    const res = await fetch('/verify', { method: 'POST', body: formData });
+    const text = await res.text();
+    let data;
     try {
-      const res = await fetch('/verify', { method: 'POST', body: formData });
-      const data = await res.json();
-      // Ако има error поле, логическа грешка
-      if (data.error) {
-        console.error('Verification error:', data.error);
-        if (data.error.includes('документа')) {
-          setErrorField('front');
-          setDocFrontFile(null);
-          setDocFrontPreview(null);
-        } else if (data.error.includes('задна')) {
-          setErrorField('back');
-          setDocBackFile(null);
-          setDocBackPreview(null);
-        } else if (data.error.includes('селфито')) {
-          setErrorField('selfie');
-          setSelfieFile(null);
-          setSelfiePreview(null);
-        }
-        setErrorMessage(data.error);
-        return;
-      }
-      // Ако верификация не е успешна
-      if (!data.verified) {
-        setErrorField(null);
-        setErrorMessage('Лицата не съвпадат, моля опитайте пак');
-        return;
-      }
-      // Успех
-      console.log('Verification succeeded:', data);
-      alert('Верификацията е успешна!');
-    } catch (networkError) {
-      console.error('Network error:', networkError);
-      setErrorField('network');
-      setErrorMessage('Грешка при изпращане на формата');
-    } finally {
-      setIsLoading(false);
+      data = JSON.parse(text);
+    } catch {
+      data = {};
     }
+
+    // Handle any HTTP error or logical error
+    if (!res.ok || data.error) {
+      const msg = data.error || res.statusText;
+      console.error('Verification error:', msg);
+      if (msg.includes('document') || msg.includes('документа')) {
+        setErrorField('front');
+        setDocFrontFile(null);
+        setDocFrontPreview(null);
+      } else if (msg.includes('back') || msg.includes('задна')) {
+        setErrorField('back');
+        setDocBackFile(null);
+        setDocBackPreview(null);
+      } else if (msg.includes('selfie') || msg.includes('селфито')) {
+        setErrorField('selfie');
+        setSelfieFile(null);
+        setSelfiePreview(null);
+      } else {
+        setErrorField('network');
+      }
+      setErrorMessage(msg);
+      setIsLoading(false);
+      return;
+    }
+
+    // At this point res.ok and no data.error
+    if (!data.verified) {
+      setErrorField(null);
+      setErrorMessage('The faces do not match, please try again.');
+      setIsLoading(false);
+      return;
+    }
+
+    console.log('Verification succeeded:', data);
+    alert('Verification succeeded!');
+    setIsLoading(false);
   };
 
   return (
@@ -122,7 +130,12 @@ export default function LoginPage() {
       {isLoading && (
         <div
           className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-          style={{ backdropFilter: 'blur(5px)', backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 1050 }}
+          style={{
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.25)',
+            zIndex: 2000
+          }}
         >
           <div className="spinner-border text-light" role="status">
             <span className="visually-hidden">Loading...</span>
@@ -135,35 +148,37 @@ export default function LoginPage() {
         <AuthForm onSubmit={handleAuthSubmit} />
       ) : !selectedCountry ? (
         <div className="card shadow-lg p-4 bg-opacity-90" style={{ maxWidth: 450, width: '100%', borderRadius: '15px' }}>
-          <h3 className="mb-3 text-center">Изберете държава</h3>
+          <h3 className="mb-3 text-center">Select Country</h3>
           <select className="form-select mb-4" value={selectedCountry} onChange={e => setSelectedCountry(e.target.value)}>
-            <option value="">-- Изберете държава --</option>
-            <option value="Bulgaria">България</option>
-            <option value="Romania">Румъния</option>
-            <option value="Germany">Германия</option>
-            <option value="France">Франция</option>
-            <option value="Italy">Италия</option>
+            <option value="">-- Select Country --</option>
+            <option value="Bulgaria">Bulgaria</option>
+            <option value="Romania">Romania</option>
+            <option value="Germany">Germany</option>
+            <option value="France">France</option>
+            <option value="Italy">Italy</option>
           </select>
         </div>
       ) : (
         <div className="container d-flex justify-content-center mt-5">
           <div className="card shadow-lg p-4 bg-opacity-90" style={{ maxWidth: 450, width: '100%', borderRadius: '15px' }}>
             <form onSubmit={handleVerificationSubmit}>
-              {/* Document Type */}
               <div className="mb-3">
-                <label className="form-label">Тип документ</label>
+                <label className="form-label">Document Type</label>
                 <select className="form-select mb-4" value={documentType} onChange={e => setDocumentType(e.target.value)}>
-                  <option value="ID Card">Лична карта</option>
-                  <option value="Passport">Паспорт</option>
+                  <option value="ID Card">ID Card</option>
+                  <option value="Passport">Passport</option>
                 </select>
               </div>
 
-              {/* Front side */}
               <div className="mb-4">
-                <label className="form-label">Заснемете {documentType} – предна страна</label>
+                <label className="form-label">Document Front – Front Side</label>
                 {!docFrontPreview && (
-                  <button type="button" className="btn btn-outline-secondary d-block mb-2 w-100" onClick={() => frontInputRef.current.click()}>
-                    Стартирай камерата за предна страна
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary d-block mb-2 w-100"
+                    onClick={() => frontInputRef.current.click()}
+                  >
+                    Capture Front Photo
                   </button>
                 )}
                 <input
@@ -178,12 +193,15 @@ export default function LoginPage() {
                 {errorField === 'front' && <div className="text-danger small mb-2">{errorMessage}</div>}
               </div>
 
-              {/* Back side */}
               <div className="mb-4">
-                <label className="form-label">Заснемете {documentType} – задна страна</label>
+                <label className="form-label">Document Back – Back Side</label>
                 {!docBackPreview && (
-                  <button type="button" className="btn btn-outline-secondary d-block mb-2 w-100" onClick={() => backInputRef.current.click()}>
-                    Стартирай камерата за задна страна
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary d-block mb-2 w-100"
+                    onClick={() => backInputRef.current.click()}
+                  >
+                    Capture Back Photo
                   </button>
                 )}
                 <input
@@ -198,12 +216,15 @@ export default function LoginPage() {
                 {errorField === 'back' && <div className="text-danger small mb-2">{errorMessage}</div>}
               </div>
 
-              {/* Selfie */}
               <div className="mb-4">
-                <label className="form-label">Заснемете селфи</label>
+                <label className="form-label">Capture Selfie</label>
                 {!selfiePreview && (
-                  <button type="button" className="btn btn-outline-secondary d-block mb-2 w-100" onClick={() => selfieInputRef.current.click()}>
-                    Стартирай камерата за селфи
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary d-block mb-2 w-100"
+                    onClick={() => selfieInputRef.current.click()}
+                  >
+                    Capture Selfie
                   </button>
                 )}
                 <input
@@ -220,7 +241,9 @@ export default function LoginPage() {
 
               {errorField === 'network' && <div className="text-danger small mb-3">{errorMessage}</div>}
 
-              <button type="submit" className="btn btn-primary btn-lg w-100">Потвърдете верификацията</button>
+              <button type="submit" className="btn btn-primary btn-lg w-100">
+                Confirm Verification
+              </button>
             </form>
           </div>
         </div>

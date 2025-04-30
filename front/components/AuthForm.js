@@ -15,10 +15,10 @@ export default function AuthForm({ onSubmit }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const formData = { email, firstName, lastName, birthDate, address, password, };
+    const formData = { email, firstName, lastName, birthDate, address, password };
 
     if (isSignUp && password !== confirmPassword) {
-      alert('Паролите не съвпадат');
+      alert('Passwords do not match');
       return;
     }
 
@@ -28,11 +28,11 @@ export default function AuthForm({ onSubmit }) {
   return (
     <div className="container d-flex justify-content-center mt-5">
       <div className="card shadow-sm p-4" style={{ width: '100%', maxWidth: '400px' }}>
-        <h2 className="text-center mb-4">{isSignUp ? 'Регистрация' : 'Вход'}</h2>
+        <h2 className="text-center mb-4">{isSignUp ? 'Sign Up' : 'Login'}</h2>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label htmlFor="email" className="form-label">Имейл</label>
+            <label htmlFor="email" className="form-label">Email</label>
             <input
               type="email"
               id="email"
@@ -46,7 +46,7 @@ export default function AuthForm({ onSubmit }) {
           {isSignUp && (
             <>
               <div className="mb-3">
-                <label htmlFor="firstName" className="form-label">Име</label>
+                <label htmlFor="firstName" className="form-label">First Name</label>
                 <input
                   type="text"
                   id="firstName"
@@ -58,7 +58,7 @@ export default function AuthForm({ onSubmit }) {
               </div>
 
               <div className="mb-3">
-                <label htmlFor="lastName" className="form-label">Фамилия</label>
+                <label htmlFor="lastName" className="form-label">Last Name</label>
                 <input
                   type="text"
                   id="lastName"
@@ -69,9 +69,8 @@ export default function AuthForm({ onSubmit }) {
                 />
               </div>
 
-
               <div className="mb-3">
-                <label htmlFor="birthDate" className="form-label">Дата на раждане</label>
+                <label htmlFor="birthDate" className="form-label">Date of Birth</label>
                 <input
                   type="date"
                   id="birthDate"
@@ -83,7 +82,7 @@ export default function AuthForm({ onSubmit }) {
               </div>
 
               <div className="mb-3">
-                <label htmlFor="address" className="form-label">Адрес</label>
+                <label htmlFor="address" className="form-label">Address</label>
                 <input
                   type="text"
                   id="address"
@@ -97,7 +96,7 @@ export default function AuthForm({ onSubmit }) {
           )}
 
           <div className="mb-3">
-            <label htmlFor="password" className="form-label">Парола</label>
+            <label htmlFor="password" className="form-label">Password</label>
             <input
               type="password"
               id="password"
@@ -110,7 +109,7 @@ export default function AuthForm({ onSubmit }) {
 
           {isSignUp && (
             <div className="mb-3">
-              <label htmlFor="confirmPassword" className="form-label">Потвърдете паролата</label>
+              <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
               <input
                 type="password"
                 id="confirmPassword"
@@ -124,7 +123,7 @@ export default function AuthForm({ onSubmit }) {
 
           <div className="d-grid gap-2">
             <button type="submit" className="btn btn-primary">
-              {isSignUp ? 'Регистрирай се' : 'Влез'}
+              {isSignUp ? 'Sign Up' : 'Login'}
             </button>
           </div>
         </form>
@@ -134,7 +133,7 @@ export default function AuthForm({ onSubmit }) {
             className="btn btn-link p-0"
             onClick={() => setIsSignUp((prev) => !prev)}
           >
-            {isSignUp ? 'Имате ли вече акаунт? Влезте тук' : 'Нямате акаунт? Регистрирайте се тук'}
+            {isSignUp ? 'Already have an account? Log in here' : 'Don’t have an account? Sign up here'}
           </button>
         </div>
       </div>
