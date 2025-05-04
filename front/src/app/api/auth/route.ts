@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   const { email, firstName, lastName, birthDate, address, password, isSignUp } = body;
 
   if (!email || !password) {
-    return new Response(JSON.stringify({ error: 'Имейл и парола са задължителни.' }), { status: 400 });
+    return new Response(JSON.stringify({ error: 'Email and password are required.' }), { status: 400 });
   }
 
   if (isSignUp) {
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     });
 
     if (userExists) {
-      return new Response(JSON.stringify({ error: 'Потребителят вече съществува.' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'User already exists.' }), { status: 400 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -31,21 +31,21 @@ export async function POST(request: Request) {
       },
     });
 
-    return new Response(JSON.stringify({ message: 'Регистрацията е успешна!' }), { status: 200 });
+    return new Response(JSON.stringify({ message: 'Registration successful!' }), { status: 200 });
   } else {
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
-      return new Response(JSON.stringify({ error: 'Невалиден имейл или парола.' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Invalid email or password.' }), { status: 400 });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      return new Response(JSON.stringify({ error: 'Невалиден имейл или парола.' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Invalid email or password.' }), { status: 400 });
     }
 
-    return new Response(JSON.stringify({ message: 'Входът е успешен!' }), { status: 200 });
+    return new Response(JSON.stringify({ message: 'Login successful!' }), { status: 200 });
   }
 }

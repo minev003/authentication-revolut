@@ -1,16 +1,13 @@
 'use client';
-// 1. Импортираме нужните неща от React и Next.js
-import { useRef, useState, useEffect } from 'react'; // Добавен useEffect за почистване
-import { useRouter } from 'next/navigation'; // <-- ДОБАВЕНО: Импорт на useRouter
+import { useRef, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AuthForm from '../../components/AuthForm';
 
 const timeoutDuration = 60000;
-
 export default function LoginPage() {
-  // 2. Инициализираме рутера
-  const router = useRouter(); // <-- ДОБАВЕНО: Инициализация на useRouter
 
-  // --- Състояния (State) ---
+  const router = useRouter();
+
   const [message, setMessage] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -25,19 +22,16 @@ export default function LoginPage() {
   const [errorField, setErrorField] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // --- Референции към input полета ---
   const frontInputRef = useRef(null);
   const backInputRef = useRef(null);
   const selfieInputRef = useRef(null);
-
-  // --- Функции за обработка ---
 
   const handleFileCapture = (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setErrorMessage('Моля, изберете файл с изображение.');
+      setErrorMessage('Please select an image file..');
       setErrorField(type);
       if (e.target) e.target.value = null;
       return;
@@ -45,7 +39,6 @@ export default function LoginPage() {
 
     const url = URL.createObjectURL(file);
 
-    // Освобождаваме стария URL преди да зададем новия, за да пестим памет
     if (type === 'front' && docFrontPreview) URL.revokeObjectURL(docFrontPreview);
     if (type === 'back' && docBackPreview) URL.revokeObjectURL(docBackPreview);
     if (type === 'selfie' && selfiePreview) URL.revokeObjectURL(selfiePreview);
@@ -67,14 +60,14 @@ export default function LoginPage() {
     }
   };
 
-  // Почистване на Object URLs при размонтиране на компонента
+
   useEffect(() => {
     return () => {
       if (docFrontPreview) URL.revokeObjectURL(docFrontPreview);
       if (docBackPreview) URL.revokeObjectURL(docBackPreview);
       if (selfiePreview) URL.revokeObjectURL(selfiePreview);
     };
-  }, [docFrontPreview, docBackPreview, selfiePreview]); // Зависимостите
+  }, [docFrontPreview, docBackPreview, selfiePreview]);
 
 
   const handleAuthSubmit = async (formData, isSignUp) => {
@@ -110,7 +103,7 @@ export default function LoginPage() {
 
     if (!docFrontFile || !docBackFile || !selfieFile) {
       setErrorField('general');
-      setErrorMessage('Моля, направете снимки на предна и задна част на документа и селфи!');
+      setErrorMessage('Please take photos of the front and back of the document and a selfie!');
       return;
     }
 
@@ -129,7 +122,7 @@ export default function LoginPage() {
 
     try {
       console.log("Sending verification request...");
-      const response = await fetch('/verify', { // Проверете дали URL е коректен
+      const response = await fetch('/verify', {
         method: 'POST',
         body: formData,
         signal: controller.signal
@@ -145,27 +138,17 @@ export default function LoginPage() {
       } catch (jsonError) {
         console.error("Failed to parse JSON response:", jsonError);
         setErrorField('network');
-        setErrorMessage(`Грешка при обработка на отговора (${response.status}).`);
-        setIsLoading(false); // Спираме зареждането при грешка в JSON
+        setErrorMessage(`Error processing response (${response.status}).`);
+        setIsLoading(false);
         return;
       }
 
       if (response.ok && responseData.status === 'success' && responseData.verified === true) {
         console.log('Verification succeeded:', responseData);
-        // alert('Верификацията е успешна!'); // По желание може да се махне
-
-        // Нулиране на формата (опционално, тъй като ще има пренасочване)
-        // setDocFrontFile(null); setDocFrontPreview(null);
-        // setDocBackFile(null); setDocBackPreview(null);
-        // setSelfieFile(null); setSelfiePreview(null);
-        // setErrorField(null); setErrorMessage('');
-
-        // 3. Пренасочваме към началната страница
-        router.push('/homePage'); // <-- ДОБАВЕНО: Пренасочване. ЗАМЕНЕТЕ '/homePage' С ВАШИЯ ПЪТ!
+        router.push('/homePage');
 
       } else {
-        // Обработка на неуспешна верификация
-        const message = responseData?.message || `Грешка при верификация (${response.status}).`;
+        const message = responseData?.message || `Verification error (${response.status}).`;
         const field = responseData?.field;
         const code = responseData?.code;
 
@@ -179,31 +162,27 @@ export default function LoginPage() {
         } else {
           setErrorField('general');
         }
-        setIsLoading(false); // Спираме зареждането при неуспех
+        setIsLoading(false);
       }
 
     } catch (error) {
-      // Обработка на мрежови и други грешки
+
       console.error('Verification fetch request failed:', error);
       clearTimeout(timeoutId);
 
       if (error.name === 'AbortError') {
         setErrorField('network');
-        setErrorMessage(`Заявката отне твърде дълго време (> ${timeoutDuration / 1000} сек) и беше прекратена.`);
+        setErrorMessage(`The request took too long (> ${timeoutDuration / 1000} ec) and was terminated`);
       } else {
         setErrorField('network');
-        setErrorMessage('Не може да се осъществи връзка със сървъра.');
+        setErrorMessage('Unable to connect to the server.');
       }
-      setIsLoading(false); // Спираме зареждането при грешка
+      setIsLoading(false);
     }
-    // Блокът finally е премахнат, за да се гарантира, че setIsLoading(false) не се извиква
-    // преди успешното пренасочване. Той вече е добавен в catch и else блоковете.
   };
 
-  // --- JSX (Визуална част) ---
   return (
     <div className="bg-dark text-light min-vh-100 d-flex flex-column align-items-center justify-content-center p-4">
-      {/* Loading overlay */}
       {isLoading && (
         <div
           className="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center"
@@ -217,53 +196,51 @@ export default function LoginPage() {
           <div className="spinner-border text-light mb-3" role="status" style={{ width: '3rem', height: '3rem' }}>
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="text-light">Верификацията се обработва, моля изчакайте...</p>
-          <p className="text-light small">(Това може да отнеме до {Math.ceil(timeoutDuration / 1000 / 60)} минути)</p>
+          <p className="text-light">Verification is being processed, please wait...</p>
+          <p className="text-light small">(This may take up to {Math.ceil(timeoutDuration / 1000 / 60)} minutes)</p>
         </div>
       )}
 
-      <h1 className="text-center mt-4 mb-5">{message || (isAuthenticated ? 'Верификация на документ' : 'Автентикация')}</h1>
+      <h1 className="text-center mt-4 mb-5">{message || (isAuthenticated ? 'Document verification' : 'Authentication')}</h1>
 
       {!isAuthenticated ? (
         <AuthForm onSubmit={handleAuthSubmit} />
       ) : !selectedCountry ? (
         <div className="card shadow-lg p-4 bg-opacity-90" style={{ maxWidth: 450, width: '100%', borderRadius: '15px' }}>
-          <h3 className="mb-3 text-center">Избери държава</h3>
+          <h3 className="mb-3 text-center">Choose a country</h3>
           <select className="form-select mb-4" value={selectedCountry} onChange={e => setSelectedCountry(e.target.value)}>
-            <option value="">-- Избери --</option>
-            <option value="Bulgaria">България</option>
-            <option value="Romania">Румъния</option>
-            <option value="Germany">Германия</option>
-            <option value="France">Франция</option>
-            <option value="Italy">Италия</option>
+            <option value="">-- Choose --</option>
+            <option value="Bulgaria">Bulgaria</option>
+            <option value="Romania">Romania</option>
+            <option value="Germany">Germany</option>
+            <option value="France">France</option>
+            <option value="Italy">Italy</option>
           </select>
-          {!selectedCountry && <p className="text-warning small text-center">Моля, изберете държава.</p>}
+          {!selectedCountry && <p className="text-center">Please select a country.</p>}
         </div>
       ) : (
         <div className="container d-flex justify-content-center mt-3">
           <div className="card shadow-lg p-4 bg-opacity-90" style={{ maxWidth: 500, width: '100%', borderRadius: '15px' }}>
             <form onSubmit={handleVerificationSubmit}>
-              {/* Document Type */}
               <div className="mb-3">
-                <label className="form-label">Тип документ</label>
+                <label className="form-label">Document type</label>
                 <select className="form-select mb-4" value={documentType} onChange={e => setDocumentType(e.target.value)}>
-                  <option value="ID Card">Лична карта</option>
-                  <option value="Passport">Паспорт</option>
+                  <option value="ID Card">ID card</option>
+                  <option value="Passport">Passport</option>
                 </select>
               </div>
 
-              {/* Document Front Input */}
               <div className="mb-4">
-                <label className="form-label d-block">Лице на документа</label>
+                <label className="form-label d-block">Document face</label>
                 {!docFrontPreview ? (
                   <button type="button" className={`btn ${errorField === 'front' ? 'btn-outline-danger' : 'btn-outline-secondary'} d-block mb-2 w-100`} onClick={() => frontInputRef.current?.click()}>
-                    Снимай лице
+                    Capture a face
                   </button>
                 ) : (
                   <div className="text-center mb-2">
                     <img src={docFrontPreview} alt="Front Preview" className="img-fluid rounded-3 mb-2" />
                     <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => { setDocFrontFile(null); setDocFrontPreview(null); if (frontInputRef.current) frontInputRef.current.value = null; frontInputRef.current?.click(); }}>
-                      Промени
+                      Changes
                     </button>
                   </div>
                 )}
@@ -271,18 +248,17 @@ export default function LoginPage() {
                 {errorField === 'front' && <div className="text-danger small mt-1">{errorMessage}</div>}
               </div>
 
-              {/* Document Back Input */}
               <div className="mb-4">
-                <label className="form-label d-block">Гръб на документа</label>
+                <label className="form-label d-block">Back of the document</label>
                 {!docBackPreview ? (
                   <button type="button" className={`btn ${errorField === 'back' ? 'btn-outline-danger' : 'btn-outline-secondary'} d-block mb-2 w-100`} onClick={() => backInputRef.current?.click()}>
-                    Снимай гръб
+                    Take a picture of your back.
                   </button>
                 ) : (
                   <div className="text-center mb-2">
                     <img src={docBackPreview} alt="Back Preview" className="img-fluid rounded-3 mb-2" />
                     <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => { setDocBackFile(null); setDocBackPreview(null); if (backInputRef.current) backInputRef.current.value = null; backInputRef.current?.click(); }}>
-                      Промени
+                      Changes
                     </button>
                   </div>
                 )}
@@ -290,18 +266,18 @@ export default function LoginPage() {
                 {errorField === 'back' && <div className="text-danger small mt-1">{errorMessage}</div>}
               </div>
 
-              {/* Selfie Input */}
+
               <div className="mb-4">
-                <label className="form-label d-block">Селфи</label>
+                <label className="form-label d-block">Selfies</label>
                 {!selfiePreview ? (
                   <button type="button" className={`btn ${errorField === 'selfie' ? 'btn-outline-danger' : 'btn-outline-secondary'} d-block mb-2 w-100`} onClick={() => selfieInputRef.current?.click()}>
-                    Направи селфи
+                    Take a selfie
                   </button>
                 ) : (
                   <div className="text-center mb-2">
                     <img src={selfiePreview} alt="Selfie Preview" className="img-fluid rounded-3 mb-2" />
                     <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => { setSelfieFile(null); setSelfiePreview(null); if (selfieInputRef.current) selfieInputRef.current.value = null; selfieInputRef.current?.click(); }}>
-                      Направи ново
+                      Make new
                     </button>
                   </div>
                 )}
@@ -309,16 +285,14 @@ export default function LoginPage() {
                 {errorField === 'selfie' && <div className="text-danger small mt-1">{errorMessage}</div>}
               </div>
 
-              {/* General/Network Error Display Area */}
               {(errorField === 'general' || errorField === 'network') && (
                 <div className="alert alert-danger text-center small p-2" role="alert">
                   {errorMessage}
                 </div>
               )}
 
-              {/* Submit Button */}
               <button type="submit" className="btn btn-primary btn-lg w-100" disabled={isLoading || !docFrontFile || !docBackFile || !selfieFile}>
-                {isLoading ? 'Обработка...' : 'Потвърди верификацията'}
+                {isLoading ? 'Processing...' : 'Confirm verification'}
               </button>
             </form>
           </div>
